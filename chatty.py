@@ -11,7 +11,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 
-os.environ["OPENAI_API_KEY"] = "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"
+
 with st.sidebar:
     st.title("ChattyPDF")
     st.markdown('''
