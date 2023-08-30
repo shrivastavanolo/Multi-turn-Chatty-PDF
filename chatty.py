@@ -7,9 +7,12 @@ from langchain.vectorstores import FAISS
 import pickle
 from dotenv import load_dotenv
 import os
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
+from datetime import datetime
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.llms import OpenAI
+from langchain.memory import VectorStoreRetrieverMemory
+from langchain.chains import ConversationChain
+from langchain.prompts import PromptTemplate
 
 
 with st.sidebar:
@@ -54,32 +57,34 @@ def main():
                 pickle.dump(Vectorstore,f)
             # st.write("Embeddings Computation Completed")
 
-        memory=ConversationBufferMemory(memory_key="chat_history",return_messages=True,output_key='answer')
-        llm=ChatOpenAI(temperature=0.0)
-        conversation=ConversationalRetrievalChain.from_llm(
-                    llm=llm,
-                    memory=memory,
-                    retriever=Vectorstore.as_retriever()
-                )
+        retriever = Vectorstore.as_retriever(search_kwargs=dict(k=1))
+        memory = VectorStoreRetrieverMemory(retriever=retriever)
+        llm = OpenAI(temperature=0) # Can be any valid LLM
+        _DEFAULT_TEMPLATE = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+        
+        Relevant pieces of previous conversation:
+        {history}
+        
+        (You do not need to use these pieces of information if not relevant)
+        
+        Current conversation:
+        Human: {input}
+        AI:"""
+        PROMPT = PromptTemplate(
+            input_variables=["history", "input"], template=_DEFAULT_TEMPLATE
+        )
+        conversation_with_summary = ConversationChain(
+            llm=llm,
+            prompt=PROMPT,
+            # We set a very low max_token_limit for the purposes of testing.
+            memory=memory,
+            verbose=True
+        )
+        
         query=st.text_input("Ask question about your file: ")
 
-        if "messages" not in st.session_state:
-            st.session_state.messages=[]
-
         if query:
-            st.session_state.messages.append({'role':"user","content": query})
-
-            # st.session_state.convo=conversation
-            res=conversation({'question':query})
-            st.write(res["answer"])
-            st.session_state.messages.append({'role':"assisstant",'content':res["answer"]})
-
-        #     res=st.session_state.convo({'question':query})
-        #     st.session_state.chat_history = res['chat_history']
-        #     for i,message in enumerate(st.session_state.chat_history):
-        #         st.write(message.content)
-
-        # st.session_state.convo
-
+            res=conversation_with_summary.predict(input="how long does it take?")
+            st.write(res)
 if __name__=='__main__':
     main()
