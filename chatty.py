@@ -84,7 +84,7 @@ def main():
         query=st.text_input("Ask question about your file: ")
 
         if query:
-            res=conversation_with_summary.predict(input="how long does it take?")
+            res=conversation_with_summary.predict(input=query)
             st.write(res)
 if __name__=='__main__':
     main()
